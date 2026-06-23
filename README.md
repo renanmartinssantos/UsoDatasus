@@ -395,13 +395,111 @@ pip install optuna lxml
 
 ### R
 
+Instale o R no seu sistema: [https://cran.r-project.org/](https://cran.r-project.org/)
+
+Com o R instalado, abra o console R ou RStudio e execute:
+
 ```r
 install.packages("read.dbc")
 ```
 
-O pacote `read.dbc` é o único requisito R do projeto. Ele está disponível no CRAN.
+O pacote `read.dbc` é o **único pacote R necessário** no projeto. Ele está disponível no CRAN e é mantido especificamente para leitura de arquivos `.dbc` do DATASUS.
 
 **Versão testada:** R ≥ 3.6
+
+> **Jupyter com kernel R (opcional):** Para executar o notebook `rIgestao.ipynb`, instale o kernel IRkernel:
+> ```r
+> install.packages('IRkernel')
+> IRkernel::installspec()
+> ```
+
+### Python
+
+Recomenda-se usar um ambiente virtual (conda ou venv).
+
+**Bibliotecas necessárias:**
+
+| Biblioteca | Uso no projeto | Instalação |
+|---|---|---|
+| `pandas` | Leitura de CSV, manipulação de dados | `pip install pandas` |
+| `pyarrow` | Leitura e escrita de arquivos Parquet | `pip install pyarrow` |
+| `plotly` | Gráficos interativos (Sankey, barras animadas) | `pip install plotly` |
+| `scikit-learn` | Regressão linear (analytics) | `pip install scikit-learn` |
+| `optuna` | Otimização de hiperparâmetros (analytics) | `pip install optuna` |
+| `tqdm` | Barra de progresso no download | `pip install tqdm` |
+| `lxml` | Parser XML/HTML auxiliar | `pip install lxml` |
+| `python-dateutil` | Geração de intervalos de datas por mês | `pip install python-dateutil` |
+
+Instalação de tudo de uma vez:
+
+```bash
+pip install pandas pyarrow plotly scikit-learn optuna tqdm lxml python-dateutil
+```
+
+Ou via conda:
+
+```bash
+conda install pandas pyarrow plotly scikit-learn tqdm
+pip install optuna lxml python-dateutil
+```
+
+**Versões testadas:** Python 3.10, pandas ≥ 1.5, pyarrow ≥ 10
+
+> **Alternativa ao pyarrow:** Se o `pyarrow` não estiver disponível no seu ambiente, o script `csv_to_parquet.py` tenta automaticamente usar o `fastparquet` como fallback:
+> ```bash
+> pip install fastparquet
+> ```
+
+---
+
+## ⚠️ Testando do Zero (Reset Completo)
+
+Se você deseja rodar o pipeline completo desde o início — como se nunca tivesse executado nada — é necessário **apagar todos os arquivos gerados** nas etapas anteriores. Caso contrário, os scripts vão pular arquivos já existentes.
+
+### Arquivos a deletar
+
+**Pasta `dbc/`** — arquivos baixados do DATASUS:
+```
+dbc/RJ_2506.dbc
+dbc/RJ_2507.dbc
+dbc/RJ_2508.dbc
+```
+
+**Pasta `raw/csv/`** — CSVs gerados pelo R:
+```
+raw/csv/RJ_2506.csv
+raw/csv/RJ_2507.csv
+raw/csv/RJ_2508.csv
+```
+
+**Pasta `raw/parquet/`** — Parquets gerados pelo Python:
+```
+raw/parquet/RJ_2506.parquet
+raw/parquet/RJ_2507.parquet
+raw/parquet/RJ_2508.parquet
+raw/parquet/processed.log
+```
+
+> **Atenção:** O arquivo `processed.log` é o log de controle do script `csv_to_parquet.py`. Se ele não for deletado junto com os `.parquet`, o script vai considerar que os arquivos já foram processados e não vai regerar nada.
+
+### Comandos para reset (terminal)
+
+**Windows (PowerShell):**
+```powershell
+Remove-Item dbc\*.dbc
+Remove-Item raw\csv\*.csv
+Remove-Item raw\parquet\*.parquet
+Remove-Item raw\parquet\processed.log
+```
+
+**Linux / macOS (bash):**
+```bash
+rm dbc/*.dbc
+rm raw/csv/*.csv
+rm raw/parquet/*.parquet raw/parquet/processed.log
+```
+
+Após deletar, execute as etapas na ordem abaixo.
 
 ---
 
