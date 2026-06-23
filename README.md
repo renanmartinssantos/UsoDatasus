@@ -567,7 +567,6 @@ Os gráficos interativos abrirão automaticamente no navegador via Plotly.
 
 ---
 
-*Renan Martins*
-*Ciência de Dados*
-*Fatec Baixada Santista Rubens Lara*
-*[https://www.linkedin.com/in/renanmartinssantos/](https://www.linkedin.com/in/renanmartinssantos/)*
+**Renan Martins**
+**Ciência de Dados**
+**[https://www.linkedin.com/in/renanmartinssantos/](https://www.linkedin.com/in/renanmartinssantos/)**
