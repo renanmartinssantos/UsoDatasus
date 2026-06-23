@@ -4,7 +4,7 @@ install.packages("read.dbc")
 
 require("read.dbc")
 
-origin_folder = "/raw/dbc/"
+origin_folder = "/dbc/"
 destiny_folder = "/raw/csv/"
 
 if (!dir.exists(destiny_folder)) {

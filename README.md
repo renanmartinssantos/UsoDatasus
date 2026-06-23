@@ -113,12 +113,11 @@ IC2/
 │       └── processed.log       # Log de controle de progresso da conversão
 │
 ├── ingestao.ipynb              # Etapa 1: Download dos .dbc via FTP (Python)
-├── rIgestao.ipynb              # Etapa 2: Conversão .dbc → .csv (R, Jupyter)
-├── ingest.r                    # Etapa 2: Conversão .dbc → .csv (R, script puro)
+├── ingest.r                    # Etapa 2: Conversão .dbc → .csv (R, script principal)
 ├── csv_to_parquet.py           # Etapa 3: Conversão .csv → .parquet (Python)
 ├── csv_to_parquet.ipynb        # Etapa 3: Versão notebook da conversão
 ├── analytics.py                # Etapa 4: Análise exploratória e visualizações
-└── municipios.csv              # Tabela de referência: código IBGE → nome do município
+└── municipios.csv              # Tabela de referência IBGE com todos os municípios do Brasil
 ```
 
 ---
@@ -172,7 +171,7 @@ Resultado: os arquivos `RJ_2506.dbc`, `RJ_2507.dbc` e `RJ_2508.dbc` são salvos 
 
 ## Etapa 2 — Conversão de .dbc para .csv (R)
 
-**Arquivos:** [`ingest.r`](ingest.r) · [`rIgestao.ipynb`](rIgestao.ipynb)
+**Arquivo:** [`ingest.r`](ingest.r)
 
 ### Por que R foi usado aqui?
 
@@ -359,39 +358,47 @@ Agrupa internações por:
 
 **Visualização:** Gráfico de barras animado (frame = Ano) para as 10 cidades com mais internações.
 
-#### Enriquecimento com tabela de municípios
+#### O arquivo `municipios.csv` — Tabela de Referência Municipal
 
-O arquivo [`municipios.csv`](municipios.csv) contém os **5.570 municípios brasileiros** com código IBGE de 6 dígitos, nome e UF. Ele é usado para converter os códigos numéricos do SIH em nomes legíveis:
+O arquivo [`municipios.csv`](municipios.csv) é uma **tabela de referência estática** que mapeia códigos numéricos do IBGE para os nomes legíveis dos municípios brasileiros. Sem ele, os dados brutos do SIH mostram apenas códigos como `330170` em vez de `"Rio de Janeiro"`.
+
+**Estrutura do arquivo:**
+
+| Coluna | Exemplo | Descrição |
+|---|---|---|
+| `CÓDIGO DO MUNICÍPIO - TOM` | `1` | Código interno TOM (Tabela de Organização Municipal) |
+| `CÓDIGO DO MUNICÍPIO - IBGE` | `1100106` | Código IBGE completo de 7 dígitos |
+| `MUNICÍPIO - TOM` | `GUAJARÁ-MIRIM` | Nome em maiúsculas (padrão TOM) |
+| `MUNICÍPIO - IBGE` | `Guajará-Mirim` | Nome oficial do IBGE (capitalizado) |
+| `UF` | `RO` | Sigla do estado |
+
+**Cobertura:** 5.571 registros — todos os municípios brasileiros reconhecidos pelo IBGE.
+
+**Separador:** `;` (ponto-e-vírgula), encoding `latin1`.
+
+**Como é usado no projeto:**
+
+O SIH armazena os municípios de residência (`MUNIC_RES`) e de internação (`MUNIC_MOV`) como códigos IBGE de 6 dígitos. O script extrai os 6 primeiros dígitos do código IBGE e cria dicionários de mapeamento:
 
 ```python
 df_municipios = pd.read_csv('municipios.csv', encoding='latin1', sep=';')
+
+# Usa apenas os 6 primeiros dígitos do código IBGE (o SIH usa 6 dígitos)
+df_municipios['COD_6'] = df_municipios['CÓDIGO DO MUNICÍPIO - IBGE'].astype(str).str.slice(0, 6)
+
 mapa_nomes = dict(zip(df_municipios['COD_6'], df_municipios['MUNICÍPIO - IBGE']))
 mapa_uf    = dict(zip(df_municipios['COD_6'], df_municipios['UF']))
 
-df_flow['NOME_ORIGEM']  = df_flow['MUNIC_RES'].map(mapa_nomes)
+# Converte códigos em nomes legíveis
+df_flow['NOME_ORIGEM']  = df_flow['MUNIC_RES'].map(mapa_nomes)   # '330455' → 'São Paulo'
+df_flow['UF_ORIGEM']    = df_flow['MUNIC_RES'].map(mapa_uf)      # '330455' → 'RJ'
 df_flow['NOME_DESTINO'] = df_flow['MUNIC_MOV'].map(mapa_nomes)
+df_flow['UF_DESTINO']   = df_flow['MUNIC_MOV'].map(mapa_uf)
 ```
 
 ---
 
 ## Requisitos e Instalação
-
-### Python
-
-Recomenda-se usar um ambiente virtual (conda ou venv).
-
-```bash
-pip install pandas pyarrow plotly scikit-learn optuna tqdm lxml python-dateutil
-```
-
-Ou via conda:
-
-```bash
-conda install pandas pyarrow plotly scikit-learn tqdm
-pip install optuna lxml
-```
-
-**Versões testadas:** Python 3.10, pandas ≥ 1.5, pyarrow ≥ 10
 
 ### R
 
@@ -406,12 +413,6 @@ install.packages("read.dbc")
 O pacote `read.dbc` é o **único pacote R necessário** no projeto. Ele está disponível no CRAN e é mantido especificamente para leitura de arquivos `.dbc` do DATASUS.
 
 **Versão testada:** R ≥ 3.6
-
-> **Jupyter com kernel R (opcional):** Para executar o notebook `rIgestao.ipynb`, instale o kernel IRkernel:
-> ```r
-> install.packages('IRkernel')
-> IRkernel::installspec()
-> ```
 
 ### Python
 
@@ -525,17 +526,13 @@ Os arquivos `.dbc` serão salvos em `dbc/`.
 
 ### Etapa 2 — Conversão .dbc → .csv (R)
 
-Opção A — Script puro:
 ```bash
 Rscript ingest.r
 ```
 
-Opção B — Jupyter com kernel R:
-```
-Abra rIgestao.ipynb e execute todas as células
-```
-
-> **Atenção:** certifique-se de que os caminhos `origin_folder` e `destiny_folder` no script R estão corretos para o seu sistema.
+> **Atenção:** certifique-se de que os caminhos `origin_folder` e `destiny_folder` no script [`ingest.r`](ingest.r) estão corretos para o seu sistema. Por padrão:
+> - `origin_folder = "/dbc/"` → pasta onde estão os `.dbc` baixados
+> - `destiny_folder = "/raw/csv/"` → pasta de saída dos `.csv`
 
 Os CSVs serão salvos em `raw/csv/`.
 
@@ -573,3 +570,4 @@ Os gráficos interativos abrirão automaticamente no navegador via Plotly.
 *Renan Martins*
 *Ciência de Dados*
 *Fatec Baixada Santista Rubens Lara*
+
